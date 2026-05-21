@@ -88,7 +88,7 @@ Use `modis` to answer the following questions. The functions `dim()`, `res()`, `
 
 Focus on **April 19, 2003**. Start by selecting the raster layer for that date and the in-situ points collected on that day.
 
-You know how to filter a vector to a specific date. Selecting a raster layer is trickier. Use the `time()` function again to get the dates associated with the layers. Figure out which layer corresponds to the target date. Then use `[[]]` to pick out just that layer. It should look something like `my_raster[[some_index]]`.
+You know how to filter a data frame to a specific date. Selecting a raster layer is trickier. Use the `time()` function again to get the dates associated with the layers. Figure out which layer corresponds to the target date. Then use `[[]]` to pick out just that layer. It should look something like `my_raster[[some_index]]`.
 
 ```{r}
 # Your code here
@@ -131,9 +131,9 @@ modis_chl <- NULL
 
 ## Part 4: Build the matchup table
 
-Join `modis_chl` back to `insitu`, matching each in-situ sample to the satellite value from the **same day**. Keep only rows where the satellite value is not missing.
+Join `modis_chl` with `insitu`, matching each in-situ sample to the satellite value from the **same day**. Keep only rows where the satellite value is not missing.
 
-Before you join, first create a column in your in-situ data called "ID". The ID of each row is its row number (1, 2, 3, ..., to the number of rows in the data frame).
+Before you join, first create a column in your in-situ data called "ID". Make the ID of each row its row number (1, 2, 3, ...).
 
 ```{r}
 # Your code here
@@ -152,11 +152,13 @@ matchup <- NULL
 
 ## Part 5: Bland-Altman analysis
 
-A **Bland-Altman plot** is a graphical method for assessing the agreement between two measurement techniques. Each point represents one matched pair: the x-axis shows the average of the two measurements, and the y-axis shows the difference between them. A horizontal line marks the **bias** (mean difference), and dashed lines mark the **limits of agreement** (bias ± 1.96 SD) — the interval expected to contain 95% of individual differences. If the two methods agreed perfectly, all points would scatter randomly around zero with no trend.
+A **Bland-Altman plot** is a graphical method for assessing the agreement between two measurement techniques. Each point represents one matched pair: the x-axis shows the average of the two measurements, and the y-axis shows the difference between them. A horizontal line marks the **bias** (mean difference), and dashed lines mark the **limits of agreement** (bias ± 1.96 SD) - the interval expected to contain 95% of individual differences. If the two methods agreed perfectly, all points would scatter randomly around zero with no trend.
+
+![](img/bland-altman.png)
 
 ### Prepare the data
 
-A Bland-Altman plot requires two quantities for each matched pair: the **mean** of the two measurements and the **difference** between them. Because chlorophyll-a spans several orders of magnitude, work on the log~10~ scale — on this scale, a difference of 0.1 corresponds to a ratio of 10^0.1^ ≈ 1.26, i.e., one method reads ∼26% higher than the other.
+A Bland-Altman plot requires two quantities for each matched pair: the **mean** of the two measurements and the **difference** between them. Because chlorophyll-a spans several orders of magnitude, work on the log~10~ scale - on this scale, a difference of 0.1 corresponds to a ratio of 10^0.1^ ≈ 1.26, i.e., one method reads ∼26% higher than the other.
 
 Create a new data frame, `bland_altman`, that starts with the matchup table and adds columns `mean_log` and `diff_log`. `mean_log` is the mean of the satellite and *in situ* chlorophyll measurements, after they've been log~10~ transformed. `diff_log` is the difference (satellite minus *in situ*) of the log~10~ transformed values.
 
