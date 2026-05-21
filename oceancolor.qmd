@@ -1,0 +1,207 @@
+---
+title: "Validating Ocean Color Remote Sensing in the California Current"
+editor: visual
+---
+
+## Background
+
+Ocean color satellites measure the spectral composition of light leaving the sea surface. Phytoplankton contain **chlorophyll-a**, a pigment that absorbs red and blue light and reflects green — giving productive ocean water its characteristic greenish tint. By measuring how much light exits the ocean at different wavelengths, satellites can estimate surface chlorophyll-a concentration, a widely-used proxy for phytoplankton biomass and ocean productivity.
+
+### MODIS-Aqua
+
+The **Moderate Resolution Imaging Spectroradiometer (MODIS)** aboard NASA's *Aqua* satellite has been collecting ocean color data since 2002. It passes over any given location roughly once per day, imaging the ocean at 250 m to 1 km spatial resolution depending on the spectral band. The chlorophyll-a data you will work with today are **Level-3 mapped** products: the raw satellite swath (Level-2) has been projected onto a regular grid at approximately 4 km resolution and quality-filtered to remove clouds, sun glint, and other contamination.
+
+### The California Current
+
+The **California Current System** is one of the world's most productive ocean regions. Cold, nutrient-rich water upwells along the coast when northwesterly winds drive surface water offshore — replacing it with deep water that fertilizes phytoplankton growth. Satellite chlorophyll maps reveal this productivity clearly: nearshore waters appear in warm colors (high chlorophyll) while the open ocean is deep blue (low chlorophyll). The California Current is also one of the most intensively studied ocean systems, making it an ideal region for validating satellite products against in-situ measurements.
+
+### Satellite validation
+
+No satellite measurement is perfect. Atmospheric correction errors, sub-pixel cloud contamination, and the inherent mismatch between a satellite pixel (∼4 km × 4 km) and a water sample (∼1 L) all introduce differences between satellite-derived and in-situ chlorophyll. **Validation** — systematically comparing satellite retrievals to coincident in-situ measurements — quantifies these differences and tells us how much we can trust the satellite data.
+
+Today you will load a MODIS-Aqua chlorophyll raster and a set of in-situ measurements collected in the same region and time period, visualize them together, extract satellite values at the in-situ locations, and evaluate agreement using a **Bland-Altman plot**.
+
+------------------------------------------------------------------------
+
+## Setup
+
+Load the `tidyverse`, `terra`, and `tidyterra`. Then read in the two datasets:
+
+-   `data/modis_aqua_chla.tif` — a multi-layer raster of daily MODIS-Aqua chlorophyll-a (mg m^-3^)
+-   `data/in_situ_chla.shp` — a point shapefile of in-situ chlorophyll-a measurements
+
+```{r}
+library(tidyverse)
+library(terra)
+library(tidyterra)
+
+# Replace the NULLs below.
+modis  <- NULL
+insitu <- NULL
+```
+
+------------------------------------------------------------------------
+
+## Part 1: Explore the data
+
+### Raster
+
+Use `modis` to answer the following questions. The functions `dim()`, `res()`, `ext()`, `time()`, and `nlyr()` will be useful.
+
+**Q1.** How many rows, columns, and layers does `modis` have?
+
+| Dimension | Value |
+|-----------|-------|
+| Rows      |       |
+| Columns   |       |
+| Layers    |       |
+
+**Q2.** What is the spatial resolution of the raster (in degrees)?
+
+*Answer:*
+
+**Q3.** What date range does the raster cover? Use `time()` to extract the layer timestamps, then `range()`.
+
+```{r}
+# Your code here
+```
+
+*Answer:*
+
+### In-situ data
+
+**Q4.** Use `glimpse()` on `insitu` to examine its attributes. What columns does it have?
+
+*Answer:*
+
+**Q5.** How many in-situ observations are there? How do the observation dates compare to the raster's time range?
+
+```{r}
+# Your code here
+```
+
+*Answer:*
+
+------------------------------------------------------------------------
+
+## Part 2: Map chlorophyll for a single day
+
+Focus on **April 19, 2003**. Start by selecting the raster layer for that date and the in-situ points collected on that day.
+
+You know how to filter a vector to a specific date. Selecting a raster layer is trickier. Use the `time()` function again to get the dates associated with the layers. Figure out which layer corresponds to the target date. Then use `[[]]` to pick out just that layer. It should look something like `my_raster[[some_index]]`.
+
+```{r}
+# Your code here
+insitu_day <- NULL
+modis_day <- NULL
+```
+
+### Make the map
+
+Plot `modis_day` and overlay the in-situ points. Apply a log~10~ color scale using `scale_fill_viridis_c(trans = "log10")`.
+
+```{r}
+# Your code here
+```
+
+**Q6.** Describe the spatial pattern of chlorophyll on this day. Where is productivity highest? Does the in-situ point location make sense given the satellite pattern?
+
+*Answer:*
+
+**Q7.** Why is it important to use a log~10~ color scale for chlorophyll rather than a linear one?
+
+*Answer:*
+
+------------------------------------------------------------------------
+
+## Part 3: Extract satellite values at in-situ locations
+
+Use `terra::extract()` to sample `modis` at all the `insitu` point locations. This returns one value per point (in rows) per raster layer (in columns).
+
+After extracting, change the names of the columns to be the dates associated with each column (hint: use `time()` again to get the dates of the raster layers).
+
+At this point, your data frame will be in wide format. Pivot it longer so you have columns for date and the chlorophyll estimate from MODIS.
+
+```{r}
+# Your code here
+modis_chl <- NULL
+```
+
+------------------------------------------------------------------------
+
+## Part 4: Build the matchup table
+
+Join `modis_chl` back to `insitu`, matching each in-situ sample to the satellite value from the **same day**. Keep only rows where the satellite value is not missing.
+
+Before you join, first create a column in your in-situ data called "ID". The ID of each row is its row number (1, 2, 3, ..., to the number of rows in the data frame).
+
+```{r}
+# Your code here
+matchup <- NULL
+```
+
+**Q8.** How many rows does `matchup` have? Why is it smaller than `insitu`?
+
+```{r}
+# Your code here
+```
+
+*Answer:*
+
+------------------------------------------------------------------------
+
+## Part 5: Bland-Altman analysis
+
+A **Bland-Altman plot** is a graphical method for assessing the agreement between two measurement techniques. Each point represents one matched pair: the x-axis shows the average of the two measurements, and the y-axis shows the difference between them. A horizontal line marks the **bias** (mean difference), and dashed lines mark the **limits of agreement** (bias ± 1.96 SD) — the interval expected to contain 95% of individual differences. If the two methods agreed perfectly, all points would scatter randomly around zero with no trend.
+
+### Prepare the data
+
+A Bland-Altman plot requires two quantities for each matched pair: the **mean** of the two measurements and the **difference** between them. Because chlorophyll-a spans several orders of magnitude, work on the log~10~ scale — on this scale, a difference of 0.1 corresponds to a ratio of 10^0.1^ ≈ 1.26, i.e., one method reads ∼26% higher than the other.
+
+Create a new data frame, `bland_altman`, that starts with the matchup table and adds columns `mean_log` and `diff_log`. `mean_log` is the mean of the satellite and *in situ* chlorophyll measurements, after they've been log~10~ transformed. `diff_log` is the difference (satellite minus *in situ*) of the log~10~ transformed values.
+
+```{r}
+# Your code here
+bland_altman <- NULL
+```
+
+### Compute the limits of agreement
+
+The **bias** is the mean difference between the two methods. The **limits of agreement** (LOA) capture the interval within which 95% of individual differences are expected to fall: bias ± 1.96 × SD.
+
+Create new variables `bias`, `diff_sd`, and `loa`. `bias` is the mean of the logged differences, `diff_sd` is the standard deviation of those values, and `loa` should be the bias plus/minus 1.96 times the standard deviation.
+
+::: callout-note
+**Why 1.96?**
+
+Most errors are *normally distributed*. Sometimes they're bigger than the mean, sometimes they're smaller, but they tend to be symmetrical and fairly close to the mean. In a normal distribution, 95% of the values fall within 1.96 standard deviations of the mean. You'll learn more about why that is in a stats course.
+:::
+
+```{r}
+bias    <- NULL
+diff_sd <- NULL
+loa     <- NULL
+```
+
+### Make the Bland-Altman plot
+
+Now, create a Bland-Altman plot. Plot `mean_log` on the x-axis and `diff_log` on the y-axis. Add horizontal lines for the bias and the two limits of agreement.
+
+```{r}
+# Your code here
+```
+
+**Q11.** What does the bias tell you about the relationship between MODIS-Aqua and in-situ chlorophyll in this dataset? Is the satellite systematically higher or lower?
+
+*Answer:*
+
+------------------------------------------------------------------------
+
+## Submission
+
+You've completed this week's lab. Follow these instructions to submit to Gradescope.
+
+1.  **Render this Quarto document.** Verify that it renders without errors and that your figures appear in the output HTML.
+2.  **Download oceancolor.qmd to your computer.**
+3.  **Navigate to the Gradescope assignment.** There's a link in the Canvas assignment.
+4.  **Click** [**Submit Assignment**]{.underline}**, then drag and drop your Quarto file** (or click to browse for it).
